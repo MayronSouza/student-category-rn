@@ -1,5 +1,70 @@
 import tf from '@tensorflow/tfjs-node';
 
+async function trainModel(inputXs, outputYs) {
+    const model = tf.sequential()
+    
+    // Primeira camada de rede:
+    //  entrada de 7 posições (idade normalizada + 3 cores + 3 localizações)
+
+    // 80 neurônios = aqui coloquei tudo isso, porque tem pouca base de treino
+    // quanto mais nesurônios, mais complexidade a rede pode aprender
+    // e consequentemente, mais processamento ela vai usar
+
+    // A ReLU age com um filtro:
+    // É como se ela deixasse somente os dados interessantes seguirem viagem na rede
+    // Se a informação que chegou nesse neurônio é positiva, chega pra frente!
+    // Se for zero ou negativa, pode jogar fora, não vai servir para nada
+    model.add(tf.layers.dense({ inputShape: [7], units: 80, activation: 'relu' }))
+
+    // Saída: 3 neurônios
+    // Um para cada categoria (premium, medium, basic)
+
+    // Activation: softmax normaliza a saída em probabilidades
+    model.add(tf.layers.dense({ units: 3, activation: 'softmax' }))
+
+    // Compilando o modelo
+    // Optimizer Adam (Adaptive Moment Estimation)
+    // é um treinador pessoal moderno para redes neurais
+    // ajusta os pesos de forma eficiente e inteligente
+    // aprender com histórico de erros e acertos
+
+    // loss: categoricalCrossentropy
+    // Ele compara o que o modelo "acha" (os scores de cada categoria)
+    // com a resposta certa
+    // a categoria premium será sempre [1, 0, 0]
+
+    // quanto mais distante da previsão do modelo da resposta correta
+    // maior o erro (loss)
+    // Exemplo clássico: classificação de imagens, recomendações, caterização de usuário
+    // qualquer coisa em que a resposta certa é "apenas uma entre várias possíveis"
+    model.compile({
+        optimizer: 'adam',
+        loss: "categoricalCrossentropy",
+        metrics: ['accuracy']
+    })
+
+    // Treinamento do modelo
+    // verbose: desabilita o log interno (e usa só callback)
+    // epochs: quantidade de vezes que vai rodar no dataset
+    // shuffle: embaralha os dados, pra evitar viés
+    await model.fit(
+        inputXs,
+        outputYs,
+        {
+            verbose: 0,
+            epochs: 100,
+            shuffle: true,
+            callbacks: {
+                onEpochEnd: (epoch, log) => console.log(
+                    `Epoch: ${epoch}: loss = ${log.loss}`
+                )
+            }
+        }
+    )
+
+    return model
+}
+
 // Exemplo de pessoas para treino (cada pessoa com idade, cor e localização)
 // const pessoas = [
 //     { nome: "Erick", idade: 30, cor: "azul", localizacao: "São Paulo" },
@@ -39,3 +104,6 @@ const outputYs = tf.tensor2d(tensorLabels)
 // inputXs.print();
 // outputYs.print();
 
+// quanto mais dados melhor!
+// assim  o algoritmo consegue entender melhor os padrões complexos dos dados
+const model = trainModel(inputXs, outputYs)
